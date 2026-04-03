@@ -1,0 +1,27 @@
+# Shopify App Configuration
+# This file is used by Shopify CLI to manage the app
+
+name = "Discount Guard"
+client_id = ""  # Fill after creating app in Shopify Partners
+application_url = ""  # Fill with deployment URL
+
+[access_scopes]
+scopes = "read_orders,read_customers,read_discounts,read_price_rules"
+
+[auth]
+redirect_urls = [
+  "https://localhost:3000/auth/callback",
+]
+
+[webhooks]
+api_version = "2025-04"
+
+  [webhooks.subscriptions]
+
+    [[webhooks.subscriptions.compliance]]
+    topics = ["customers/data_request", "customers/redact", "shop/redact"]
+    uri = "/webhooks/compliance"
+
+    [[webhooks.subscriptions.event]]
+    topics = ["orders/create"]
+    uri = "/webhooks/orders-create"
