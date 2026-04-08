@@ -75,6 +75,7 @@ export async function analyzeOrder(order: OrderData): Promise<void> {
       checkMultiAccountSameIP(order, emailHash),
       checkMultiAccountSameAddress(order, emailHash, addressHash),
       checkExcessiveUse(order, emailHash),
+      checkRapidFireUsage(order),
     ]);
   } catch (err) {
     console.error("[detection] Detection checks failed:", err);
@@ -144,7 +145,35 @@ async function checkMultiAccountSameAddress(
   }
 }
 
-// Detection 3: Same email using same code excessively (>2 times)
+// Detection 3: Rapid-fire usage — same discount code used by 5+ different customers within 30 minutes
+async function checkRapidFireUsage(order: OrderData) {
+  const thirtyMinsAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+
+  const { count } = await supabase
+    .from("orders")
+    .select("*", { count: "exact", head: true })
+    .eq("shop", order.shop)
+    .eq("discount_code", order.discountCode)
+    .gte("created_at", thirtyMinsAgo);
+
+  if (count && count >= 5) {
+    await flagAbuse({
+      shop: order.shop,
+      type: "public_share",
+      discount_code: order.discountCode,
+      severity: count >= 10 ? "high" : "medium",
+      resolved: false,
+      details: {
+        uses_in_30min: count,
+        order_id: order.shopifyOrderId,
+        discount_value: order.discountValue,
+        likely_cause: "Discount code shared publicly (social media, coupon sites)",
+      },
+    });
+  }
+}
+
+// Detection 4: Same email using same code excessively (>2 times)
 async function checkExcessiveUse(order: OrderData, emailHash: string) {
   const { count } = await supabase
     .from("orders")
