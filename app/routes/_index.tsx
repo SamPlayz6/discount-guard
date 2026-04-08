@@ -195,15 +195,27 @@ export default function Dashboard() {
                 <BlockStack gap="100">
                   <Text as="p">
                     <strong>Same IP, different accounts</strong> — Multiple
-                    email addresses using the same code from the same IP address
+                    emails using the same code from the same IP
                   </Text>
                   <Text as="p">
                     <strong>Same address, different accounts</strong> — Different
                     customers shipping to the same address with the same code
                   </Text>
                   <Text as="p">
+                    <strong>Rapid-fire usage</strong> — 5+ uses of the same code
+                    within 30 minutes (likely shared publicly)
+                  </Text>
+                  <Text as="p">
                     <strong>Excessive reuse</strong> — One customer using a
                     single-use code multiple times
+                  </Text>
+                  <Text as="p">
+                    <strong>Disposable emails</strong> — Orders using temporary
+                    email providers (mailinator, guerrillamail, etc.)
+                  </Text>
+                  <Text as="p">
+                    <strong>Patterned emails</strong> — Sequential or near-identical
+                    email addresses (user1@, user2@, user3@)
                   </Text>
                 </BlockStack>
                 <Text as="p" tone="subdued">
