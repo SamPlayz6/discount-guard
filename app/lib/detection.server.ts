@@ -48,6 +48,30 @@ function hashAddress(addr: OrderData["shippingAddress"]): string | null {
   return hashPII(parts);
 }
 
+// Known disposable/temporary email providers
+const DISPOSABLE_EMAIL_DOMAINS = [
+  "mailinator.com",
+  "guerrillamail.com",
+  "tempmail.com",
+  "throwaway.email",
+  "yopmail.com",
+  "sharklasers.com",
+  "guerrillamailblock.com",
+  "grr.la",
+  "dispostable.com",
+  "mailnesia.com",
+  "maildrop.cc",
+  "10minutemail.com",
+  "trashmail.com",
+  "fakeinbox.com",
+  "tempail.com",
+  "harakirimail.com",
+  "mailcatch.com",
+  "temp-mail.org",
+  "getnada.com",
+  "mohmal.com",
+] as const;
+
 export async function analyzeOrder(order: OrderData): Promise<void> {
   if (!order.discountCode) return; // No discount = nothing to check
 
@@ -76,6 +100,7 @@ export async function analyzeOrder(order: OrderData): Promise<void> {
       checkMultiAccountSameAddress(order, emailHash, addressHash),
       checkExcessiveUse(order, emailHash),
       checkRapidFireUsage(order),
+      checkDisposableEmail(order),
     ]);
   } catch (err) {
     console.error("[detection] Detection checks failed:", err);
@@ -168,6 +193,28 @@ async function checkRapidFireUsage(order: OrderData) {
         order_id: order.shopifyOrderId,
         discount_value: order.discountValue,
         likely_cause: "Discount code shared publicly (social media, coupon sites)",
+      },
+    });
+  }
+}
+
+// Detection 5: Disposable email provider used with a discount code
+async function checkDisposableEmail(order: OrderData) {
+  const domain = order.customerEmail.toLowerCase().split("@")[1];
+  if (!domain) return;
+
+  if (DISPOSABLE_EMAIL_DOMAINS.includes(domain as (typeof DISPOSABLE_EMAIL_DOMAINS)[number])) {
+    await flagAbuse({
+      shop: order.shop,
+      type: "public_share",
+      discount_code: order.discountCode!,
+      severity: "medium",
+      resolved: false,
+      details: {
+        email_domain: domain,
+        order_id: order.shopifyOrderId,
+        discount_value: order.discountValue,
+        likely_cause: "Disposable email provider detected",
       },
     });
   }
