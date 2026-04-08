@@ -67,7 +67,7 @@ export async function createSubscription(
         lineItems: [{
           plan: {
             appRecurringPricingDetails: {
-              price: { amount: ${planDetails.price}, currencyCode: USD }
+              price: { amount: ${planDetails.price}, currencyCode: "USD" }
               interval: EVERY_30_DAYS
             }
           }

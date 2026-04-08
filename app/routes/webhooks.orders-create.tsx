@@ -19,7 +19,13 @@ export async function action({ request }: ActionFunctionArgs) {
     return json({ error: "Invalid signature" }, { status: 401 });
   }
 
-  const order = JSON.parse(body);
+  let order: any;
+  try {
+    order = JSON.parse(body);
+  } catch (err) {
+    console.error("[webhook:orders-create] Failed to parse request body:", err);
+    return json({ error: "Invalid JSON" }, { status: 400 });
+  }
 
   // Extract discount code info
   const discountCode = order.discount_codes?.[0]?.code ?? null;

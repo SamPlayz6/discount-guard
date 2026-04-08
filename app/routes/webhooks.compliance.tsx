@@ -20,7 +20,13 @@ export async function action({ request }: ActionFunctionArgs) {
     return json({ error: "Invalid signature" }, { status: 401 });
   }
 
-  const payload = JSON.parse(body);
+  let payload: any;
+  try {
+    payload = JSON.parse(body);
+  } catch (err) {
+    console.error("[webhook:compliance] Failed to parse request body:", err);
+    return json({ error: "Invalid JSON" }, { status: 400 });
+  }
 
   switch (topic) {
     case "customers/data_request":
@@ -29,15 +35,21 @@ export async function action({ request }: ActionFunctionArgs) {
       console.log(`Data request from ${shop} for customer ${payload.customer?.id}`);
       break;
 
-    case "customers/redact":
-      // Delete customer data (we only have hashed data, but delete matching records)
-      console.log(`Customer redact from ${shop} for customer ${payload.customer?.id}`);
+    case "customers/redact": {
+      // Delete order records matching the customer email
+      const email = payload.customer?.email;
+      if (email) {
+        await supabase.from("orders").delete().eq("shop", shop).eq("customer_email", email);
+        console.log(`Customer redact from ${shop}: deleted orders for ${email}`);
+      }
       break;
+    }
 
     case "shop/redact":
-      // Delete all shop data
+      // Delete all shop data including sessions
       await supabase.from("abuse_flags").delete().eq("shop", shop);
       await supabase.from("orders").delete().eq("shop", shop);
+      await supabase.from("sessions").delete().eq("shop", shop);
       await supabase.from("merchants").delete().eq("shop", shop);
       console.log(`Shop redact: deleted all data for ${shop}`);
       break;

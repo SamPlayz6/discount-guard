@@ -1,5 +1,6 @@
 import "@shopify/shopify-api/adapters/node";
 import { shopifyApi, LATEST_API_VERSION, Session } from "@shopify/shopify-api";
+import { supabase } from "./supabase.server";
 
 const isDev = process.env.NODE_ENV === "development";
 
@@ -19,28 +20,63 @@ export const shopify = shopifyApi({
   logger: { level: isDev ? 1 : 0 },
 });
 
-// In-memory session storage (use Supabase in production)
-const sessionStore = new Map<string, Session>();
-
+// Supabase-backed session storage (persistent across restarts)
+// Table schema: sessions(id text PK, shop text, data jsonb, expires_at timestamptz)
 export const sessionStorage = {
   async storeSession(session: Session): Promise<boolean> {
-    sessionStore.set(session.id, session);
+    const { error } = await supabase
+      .from("sessions")
+      .upsert({
+        id: session.id,
+        shop: session.shop,
+        data: session.toObject(),
+        expires_at: session.expires?.toISOString() ?? null,
+      });
+    if (error) {
+      console.error("Failed to store session:", error.message);
+      return false;
+    }
     return true;
   },
+
   async loadSession(id: string): Promise<Session | undefined> {
-    return sessionStore.get(id);
+    const { data, error } = await supabase
+      .from("sessions")
+      .select("data")
+      .eq("id", id)
+      .single();
+    if (error || !data) return undefined;
+    return Session.fromPropertyArray(
+      Object.entries(data.data as Record<string, unknown>),
+    );
   },
+
   async deleteSession(id: string): Promise<boolean> {
-    sessionStore.delete(id);
-    return true;
+    const { error } = await supabase
+      .from("sessions")
+      .delete()
+      .eq("id", id);
+    return !error;
   },
+
   async deleteSessions(ids: string[]): Promise<boolean> {
-    ids.forEach((id) => sessionStore.delete(id));
-    return true;
+    const { error } = await supabase
+      .from("sessions")
+      .delete()
+      .in("id", ids);
+    return !error;
   },
+
   async findSessionsByShop(shop: string): Promise<Session[]> {
-    return Array.from(sessionStore.values()).filter(
-      (session) => session.shop === shop,
+    const { data, error } = await supabase
+      .from("sessions")
+      .select("data")
+      .eq("shop", shop);
+    if (error || !data) return [];
+    return data.map((row) =>
+      Session.fromPropertyArray(
+        Object.entries(row.data as Record<string, unknown>),
+      ),
     );
   },
 };

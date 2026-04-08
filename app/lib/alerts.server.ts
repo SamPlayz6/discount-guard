@@ -43,6 +43,7 @@ export async function sendAbuseAlert(
   });
 
   // TODO: Send actual email via Resend/SendGrid
+  console.warn("[alerts] Email sending not yet implemented. Alert was logged but no email was sent to", shop.email);
   // await resend.emails.send({
   //   from: "alerts@discountguard.app",
   //   to: shop.email,

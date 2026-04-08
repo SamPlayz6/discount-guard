@@ -56,21 +56,29 @@ export async function analyzeOrder(order: OrderData): Promise<void> {
   const addressHash = hashAddress(order.shippingAddress);
 
   // Store the order
-  await supabase.from("orders").insert({
-    shop: order.shop,
-    shopify_order_id: order.shopifyOrderId,
-    discount_code: order.discountCode,
-    customer_email: emailHash,
-    customer_ip: order.customerIp ? hashPII(order.customerIp) : null,
-    shipping_address_hash: addressHash,
-  });
+  try {
+    await supabase.from("orders").insert({
+      shop: order.shop,
+      shopify_order_id: order.shopifyOrderId,
+      discount_code: order.discountCode,
+      customer_email: emailHash,
+      customer_ip: order.customerIp ? hashPII(order.customerIp) : null,
+      shipping_address_hash: addressHash,
+    });
+  } catch (err) {
+    console.error("[detection] Failed to insert order:", err);
+  }
 
   // Run detection checks in parallel
-  await Promise.all([
-    checkMultiAccountSameIP(order, emailHash),
-    checkMultiAccountSameAddress(order, emailHash, addressHash),
-    checkExcessiveUse(order, emailHash),
-  ]);
+  try {
+    await Promise.all([
+      checkMultiAccountSameIP(order, emailHash),
+      checkMultiAccountSameAddress(order, emailHash, addressHash),
+      checkExcessiveUse(order, emailHash),
+    ]);
+  } catch (err) {
+    console.error("[detection] Detection checks failed:", err);
+  }
 }
 
 // Detection 1: Same discount code used from same IP by different emails
